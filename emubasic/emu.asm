@@ -52,11 +52,15 @@ KBHIT:	LD	A,(UARTCR)
 	RET
 ;
 ;	A -> UART
-TXA:	PUSH	AF
-TXAST1:	LD	A,(UARTCR)
+TXA:
+	PUSH	F
+	PUSH	A	
+TXAST1:
+	LD	A,(UARTCR)
 	BIT	1,A
 	JR	Z,TXAST1
-	POP	AF
+	POP	A
+	POP	F	
 	LD	(UARTDR),A
 	RET
 ;
@@ -681,13 +685,15 @@ GETCMD:	LD	HL,-1		; Flag direct mode
 	INC	A		; Test if end of line
 	DEC	A		; Without affecting Carry
 	JP	Z,GETCMD	; Nothing entered - Get another
-	PUSH	AF		; Save Carry status
+	PUSH	F
+	PUSH	A		; Save Carry status
 	CALL	ATOH		; Get line number into DE
 	PUSH	DE		; Save line number
 	CALL	CRUNCH		; Tokenise rest of line
 	LD	B,A		; Length of tokenised line
 	POP	DE		; Restore line number
-	POP	AF		; Restore Carry
+	POP	A
+	POP	F		; Restore Carry
 	JP	NC,EXCUTE	; No line number - Direct mode
 	PUSH	DE		; Save line number
 	PUSH	BC		; Save length of tokenised line
@@ -695,11 +701,14 @@ GETCMD:	LD	HL,-1		; Flag direct mode
 	LD	(LSTBIN),A	; Clear last byte input
 	CALL	GETCHR		; Get next character
 	OR	A,A		; Set flags
-	PUSH	AF		; And save them
+	PUSH	F
+	PUSH	A		; And save them
 	CALL	SRCHLN		; Search for line number in DE
 	JP	C,LINFND	; Jump if line found
-	POP	AF		; Get status
-	PUSH	AF		; And re-save
+	POP	A
+	POP	F		; Get status
+	PUSH	F
+	PUSH	A		; And re-save
 	JP	Z,ULERR	; Nothing after number - Error
 	OR	A,A		; Clear Carry
 LINFND:	PUSH	BC		; Save address of line in prog
@@ -717,7 +726,8 @@ SFTPRG:	LD	A,(DE)		; Shift rest of program down
 	LD	(PROGND),HL	; Update end of program
 ;
 INEWLN:	POP	DE		; Get address of line,
-	POP	AF		; Get status
+	POP	A
+	POP	F		; Get status
 	JP	Z,SETPTR	; No text - Set up pointers
 	LD	HL,(PROGND)	; Get end of program
 	;EX	(SP),HL		; Get length of input line
@@ -909,7 +919,8 @@ NOCHNG:	CP	A,C		; Same as in buffer ?
 	JP	SEARCH		; Look at next word
 ;
 MATCH:	LD	C,B		; Word found - Save token value
-	POP	AF		; Throw away return
+	POP	A
+	POP	F		; Throw away return
 	EX	DE,HL
 	RET			; Return to "RETNAD"
 RETNAD:	EX	DE,HL		; Get address in string
@@ -1052,13 +1063,16 @@ CHKSYN:	LD	A,(HL)		; Check syntax of character
 	JP	Z,GETCHR	; Yes - Get next character
 	JP	SNERR		; Different - ?SN Error
 ;
-OUTC:	PUSH	AF		; Save character
+OUTC:	PUSH	F
+	PUSH	A		; Save character
 	LD	A,(CTLOFG)	; Get control "O" flag
 	OR	A,A		; Is it set?
 	JP	NZ,POPAF	; Yes - don't output
-	POP	AF		; Restore character
+	POP	A
+	POP	F		; Restore character
 	PUSH	BC		; Save buffer length
-	PUSH	AF		; Save character
+	PUSH	F
+	PUSH	A		; Save character
 	CP	A,' '		; Is it a control code?
 	JP	C,DINPOS	; Yes - Don't INC POS(X)
 	LD	A,(LWIDTH)	; Get line width
@@ -1071,7 +1085,8 @@ OUTC:	PUSH	AF		; Save character
 	CALL	Z,PRCRLF	; Yes - output CRLF
 INCLEN:	INC	A		; Move on one character
 	LD	(CURPOS),A	; Save new position
-DINPOS:	POP	AF		; Restore character
+DINPOS:	POP	A
+	POP	F		; Restore character
 	POP	BC		; Restore buffer length
 	CALL	MONOUT		; Send it
 	RET
@@ -1226,7 +1241,8 @@ FORFND:	EX	DE,HL		; Code string address to HL
 	POP	HL		; Restore code string address
 SAVSTP:	PUSH	BC		; Save the STEP value in block
 	PUSH	DE
-	PUSH	AF		; Save sign of STEP
+	PUSH	F
+	PUSH	A		; Save sign of STEP
 	INC	SP		; Don't save flags
 	PUSH	HL		; Save code string address
 	LD	HL,(BRKLIN)	; Get address of index variable
@@ -1334,7 +1350,8 @@ PEND:	RET	NZ		; Exit if anything else
 INPBRK:	OR	A,11111111B	; Flag "Break" wanted
 	POP	BC		; Return not needed and more
 ENDPRG:	LD	HL,(LINEAT)	; Get current line number
-	PUSH	AF		; Save STOP / END status
+	PUSH	F
+	PUSH	A		; Save STOP / END status
 	LD	A,L		; Is it direct break?
 	AND	A,H
 	INC	A		; Line is -1 if direct break
@@ -1345,7 +1362,8 @@ ENDPRG:	LD	HL,(LINEAT)	; Get current line number
 NOLIN:	XOR	A,A
 	LD	(CTLOFG),A	; Enable output
 	CALL	STTLIN		; Start a new line
-	POP	AF		; Restore STOP / END status
+	POP	A
+	POP	F		; Restore STOP / END status
 	LD	HL,BRKMSG	; "Break" message
 	JP	NZ,ERRIN	; "in line" wanted?
 	JP	PRNTOK		; Go to command mode
@@ -1405,7 +1423,8 @@ GETLN:	LD	DE,0		; Get number to DE
 GTLNLP:	CALL	GETCHR		; Get next character
 	RET	NC		; Exit if not a digit
 	PUSH	HL		; Save code string address
-	PUSH	AF		; Save digit
+	PUSH	F
+	PUSH	A		; Save digit
 	LD	HL,65529/10	; Largest number 65529
 	CALL	CPDEHL		; Number in range?
 	JP	C,SNERR		; No - ?SN Error
@@ -1415,7 +1434,8 @@ GTLNLP:	CALL	GETCHR		; Get next character
 	ADD	HL,HL		; Times 4
 	ADD	HL,DE		; Times 5
 	ADD	HL,HL		; Times 10
-	POP	AF		; Restore digit
+	POP	A
+	POP	F		; Restore digit
 	SUB	A,'0'		; Make it 0 to 9
 	LD	E,A		; DE = Value of digit
 	LD	D,0
@@ -1474,7 +1494,8 @@ GOSUB:	LD	C,3		; 3 Levels of stack needed
 	LD	HL,(LINEAT)	; Get current line
 	;XXX EX	(SP),HL		; Into stack - Code string out
 	LD	A,ZGOSUB	; "GOSUB" token
-	PUSH	AF		; Save token
+	PUSH	F
+	PUSH	A		; Save token
 	INC	SP		; Don't save flags
 ;
 RUNLIN:	PUSH	BC		; Save return address
@@ -1536,9 +1557,11 @@ LET:	CALL	GETVAR		; Get variable name
 	DB	ZEQUAL		; "=" token
 	PUSH	DE		; Save address of variable
 	LD	A,(TYPE)	; Get data type
-	PUSH	AF		; Save type
+	PUSH	F
+	PUSH	A		; Save type
 	CALL	EVAL		; Evaluate expression
-	POP	AF		; Restore type
+	POP	A
+	POP	F		; Restore type
 	;XXX EX	(SP),HL		; Save code - Get var addr
 	LD	(BRKLIN),HL	; Save address of variable
 	RR	1,A				; Adjust type
@@ -1667,10 +1690,12 @@ DONULL:	XOR	A,A		; Set to position 0
 	LD	A,(NULLS)	; Get number of nulls
 NULLP:	DEC	A		; Count them
 	RET	Z		; Return if done
-	PUSH	AF		; Save count
+	PUSH	F
+	PUSH	A		; Save count
 	XOR	A,A		; Load a null
 	CALL	OUTC		; Output it
-	POP	AF		; Restore count
+	POP	A
+	POP	F		; Restore count
 	JP	NULLP		; Keep counting
 ;
 DOCOM:	LD	A,(COMMAN)	; Get comma width
@@ -1684,12 +1709,14 @@ ZONELP:	SUB	A,14		; Next zone of 14 characters
 	CPL	A			; Number of spaces to output
 	JP	ASPCS		; Output them
 ;
-DOTAB:	PUSH	AF		; Save token
+DOTAB:	PUSH	F
+	PUSH	A		; Save token
 	CALL	FNDNUM		; Evaluate expression
 	CALL	CHKSYN		; Make sure ")" follows
 	DB	")"
 	DEC	HL		; Back space on to ")"
-	POP	AF		; Restore token
+	POP	A
+	POP	F		; Restore token
 	SUB	A,ZSPC		; Was it "SPC(" ?
 	PUSH	HL		; Save code string address
 	JP	Z,DOSPC	; Yes - Do 'E' spaces
@@ -1854,7 +1881,8 @@ NEXT1:	CALL	NZ,GETVAR	; Get index address
 	PUSH	DE		; Save index address
 	LD	A,(HL)		; Get sign of STEP
 	INC	HL
-	PUSH	AF		; Save sign of STEP
+	PUSH	F
+	PUSH	A		; Save sign of STEP
 	PUSH	DE		; Save index address
 	CALL	PHLTFP		; Move index value to FPREG
 	;XXX EX	(SP),HL		; Save address of TO value
@@ -2072,18 +2100,22 @@ SGNEXP:	DEC	D		; Dee to flag negative exponent
 ;
 POR:	DB	0F6H		; Flag "OR"
 PAND:	XOR	A,A		; Flag "AND"
-	PUSH	AF		; Save "AND" / "OR" flag
+	PUSH	F
+	PUSH	A		; Save "AND" / "OR" flag
 	CALL	TSTNUM		; Make sure it's a number
 	CALL	DEINT		; Get integer -32768 to 32767
-	POP	AF		; Restore "AND" / "OR" flag
+	POP	A
+	POP	F		; Restore "AND" / "OR" flag
 	EX	DE,HL		; <- Get last
 	POP	BC		; <- value
 	;XXX EX	(SP),HL		; <- from
 	EX	DE,HL		; <- stack
 	CALL	FPBCDE		; Move last value to FPREG
-	PUSH	AF		; Save "AND" / "OR" flag
+	PUSH	F
+	PUSH	A		; Save "AND" / "OR" flag
 	CALL	DEINT		; Get integer -32768 to 32767
-	POP	AF		; Restore "AND" / "OR" flag
+	POP	A
+	POP	F		; Restore "AND" / "OR" flag
 	POP	BC		; Get value
 	LD	A,C		; Get LSB
 	LD	HL,ACPASS	; Address of save AC as current
@@ -2118,7 +2150,8 @@ CMPLG1:	LD	A,C		; Get data type
 	RR	1,A
 	POP	BC		; Get last expression to BCDE
 	POP	DE
-	PUSH	AF		; Save status
+	PUSH	F
+	PUSH	A		; Save status
 	CALL	CHKTYP		; Check that types match
 	LD	HL,CMPRES	; Result to comparison
 	PUSH	HL		; Save for RETurn
@@ -2135,10 +2168,12 @@ CMPLG1:	LD	A,C		; Get data type
 	LD	B,(HL)		; Get MSB of address
 	POP	DE		; Restore string name
 	PUSH	BC		; Save address of string
-	PUSH	AF		; Save length of string
+	PUSH	F
+	PUSH	A		; Save length of string
 	CALL	GSTRDE		; Get second string
 	CALL	LOADFP		; Get address of second string
-	POP	AF		; Restore length of string 1
+	POP	A
+	POP	F		; Restore length of string 1
 	LD	D,A		; Length to D
 	POP	HL		; Restore address of string 1
 CMPSTR:	LD	A,E		; Bytes of string 2 to do
@@ -2301,7 +2336,8 @@ SCPTLP:	PUSH	DE		; Save number of dimensions
 	PUSH	BC		; Save array name
 	CALL	FPSINT		; Get subscript (0-32767)
 	POP	BC		; Restore array name
-	POP	AF		; Get number of dimensions
+	POP	A
+	POP	F		; Get number of dimensions
 	EX	DE,HL
 	;XXX EX	(SP),HL		; Save subscript value
 	PUSH	HL		; Save LCRFLG and TYPE
@@ -2321,7 +2357,8 @@ SCPTLP:	PUSH	DE		; Save number of dimensions
 	DB	11H		; Skip "PUSH HL" and "PUSH AF'
 ;
 ARLDSV:	PUSH	HL		; Save code string address
-	PUSH	AF		; A = 00 , Flags set = Z,N
+	PUSH	F
+	PUSH	A		; A = 00 , Flags set = Z,N
 	LD	HL,(VAREND)	; Start of arrays
 	DB	3EH		; Skip "ADD HL,DE"
 FNDARY:	ADD	HL,DE		; Move to next array start
@@ -2345,7 +2382,8 @@ NXTARY:	INC	HL		; Move on
 	LD	A,(LCRFLG)	; Found Locate or Create it?
 	OR	A,A	
 	JP	NZ,DDERR	; Create - ?DD Error
-	POP	AF		; Locate - Get number of dim'ns
+	POP	A
+	POP	F		; Locate - Get number of dim'ns
 	LD	B,H		; BC Points to array dim'ns
 	LD	C,L
 	JP	Z,POPHRT	; Jump if array load/save
@@ -2355,7 +2393,8 @@ BSERR:	LD	E,BS		; ?BS Error
 	JP	ERROR		; Output error
 ;
 CREARY:	LD	DE,4		; 4 Bytes per entry
-	POP	AF		; Array to save or 0 dim'ns?
+	POP	A
+	POP	F		; Array to save or 0 dim'ns?
 	JP	Z,FCERR		; Yes - ?FC Error
 	LD	(HL),C		; Save second byte of name
 	INC	HL
@@ -2379,15 +2418,18 @@ DEFSIZ:	LD	(HL),C		; Save LSB of dimension size
 	INC	HL
 	LD	(HL),B		; Save MSB of dimension size
 	INC	HL
-	PUSH	AF		; Save num' of dim'ns an status
+	PUSH	F
+	PUSH	A		; Save num' of dim'ns an status
 	PUSH	HL		; Save address of dim'n size
 	CALL	MLDEBC		; Multiply DE by BC to find
 	EX	DE,HL		; amount of mem needed (to DE)
 	POP	HL		; Restore address of dimension
-	POP	AF		; Restore number of dimensions
+	POP	A
+	POP	F		; Restore number of dimensions
 	DEC	A		; Count them
 	JP	NZ,CRARLP	; Do next dimension if more
-	PUSH	AF		; Save locate/create flag
+	PUSH	F
+	PUSH	A		; Save locate/create flag
 	LD	B,D		; MSB of memory needed
 	LD	C,E		; LSB of memory needed
 	EX	DE,HL
@@ -2414,7 +2456,8 @@ ZERARY:	DEC	HL		; Back through array data
 	INC	HL
 	LD	(HL),D		; Save MSB of bytes needed
 	INC	HL
-	POP	AF		; Locate / Create?
+	POP	A
+	POP	F		; Locate / Create?
 	JP	C,ENDDIM	; A is 0 , End if create
 FINDEL:	LD	B,A		; Find array element
 	LD	C,A
@@ -2427,14 +2470,16 @@ FNDELP:	POP	HL		; Address of next dim' size
 	LD	D,(HL)		; Get MSB of dim'n size
 	INC	HL
 	;XXX EX	(SP),HL		; Save address - Get index
-	PUSH	AF		; Save number of dim'ns
+	PUSH	F
+	PUSH	A		; Save number of dim'ns
 	CALL	CPDEHL		; Dimension too large?
 	JP	NC,BSERR	; Yes - ?BS Error
 	PUSH	HL		; Save index
 	CALL	MLDEBC		; Multiply previous by size
 	POP	DE		; Index supplied to DE
 	ADD	HL,DE		; Add index to pointer
-	POP	AF		; Number of dimensions
+	POP	A
+	POP	F		; Number of dimensions
 	DEC	A		; Count them
 	LD	B,H		; MSB of pointer
 	LD	C,L		; LSB of pointer
@@ -2651,8 +2696,10 @@ PRSLP:	DEC	E		; Count characters
 ;
 TESTR:	OR	A,A		; Test if enough room
 	DB	0EH		; No garbage collection done
-GRBDON:	POP	AF		; Garbage collection done
-	PUSH	AF		; Save status
+GRBDON:	POP	A
+	POP	F		; Garbage collection done
+	PUSH	F
+	PUSH	A		; Save status
 	LD	HL,(STRSPC)	; Bottom of string space in use
 	EX	DE,HL		; To DE
 	LD	HL,(STRBOT)	; Bottom of string area
@@ -2666,14 +2713,17 @@ GRBDON:	POP	AF		; Garbage collection done
 	LD	(STRBOT),HL	; Save new bottom of area
 	INC	HL		; Point to first byte of string
 	EX	DE,HL		; Address to DE
-POPAF:	POP	AF		; Throw away status push
+POPAF:	POP	A
+	POP	F		; Throw away status push
 	RET
 ;
-TESTOS:	POP	AF		; Garbage collect been done?
+TESTOS:	POP	A
+	POP	F		; Garbage collect been done?
 	LD	E,OS		; ?OS Error
 	JP	Z,ERROR		; Yes - Not enough string apace
 	CP	A,A			; Flag garbage collect done
-	PUSH	AF		; Save status
+	PUSH	F
+	PUSH	A		; Save status
 	LD	BC,GRBDON	; Garbage collection done
 	PUSH	BC		; Save for RETurn
 GARBGE:	LD	HL,(LSTRAM)	; Get end of RAM pointer
@@ -2755,8 +2805,10 @@ STRADD:	LD	A,(HL)		; Get string length
 	LD	L,C
 	RET	NC		; Outside string area - Ignore
 	POP	BC		; Get return , Throw 2 away
-	POP	AF		; 
-	POP	AF		; 
+	POP	A
+	POP	F		; 
+	POP	A
+	POP	F		; 
 	PUSH	HL		; Save variable pointer
 	PUSH	DE		; Save address of current
 	PUSH	BC		; Put back return address
@@ -2875,7 +2927,7 @@ BAKTMP:	LD	HL,(TMSTPT)	; Get temporary string pool top
 LEN:	LD	BC,PASSA	; To return integer A
 	PUSH	BC		; Save address
 GETLEN:	CALL	GETSTR		; Get string and its length
-	XOR	A
+	XOR	A,A	
 	LD	D,A		; Clear D
 	LD	(TYPE),A	; Set type to numeric
 	LD	A,(HL)		; Get length of string
@@ -2957,7 +3009,8 @@ MID:	EX	DE,HL		; Get code string address
 	CALL	GETINT		; Get integer 0-255
 RSTSTR:	CALL	CHKSYN		; Make sure ")" follows
 	DB	")"
-	POP	AF		; Restore starting position
+	POP	A
+	POP	F		; Restore starting position
 	;XXX EX	(SP),HL		; Get string,8ave code string
 	LD	BC,MID1		; Continuation of MID$ routine
 	PUSH	BC		; Save for return
@@ -3022,7 +3075,8 @@ POUT:	CALL	SETIO		; Set up port number
 	JP	OUTSUB		; Output data and return
 ;
 WAIT:	CALL	SETIO		; Set up port number
-	PUSH	AF		; Save AND mask
+	PUSH	F
+	PUSH	A		; Save AND mask
 	LD	E,0		; Assume zero if none given
 	DEC	HL		; DEC 'cos GETCHR INCs
 	CALL	GETCHR		; Get next character
@@ -3096,10 +3150,12 @@ FPADD:	LD	A,B		; Get FP exponent
 	POP	DE
 NOSWAP:	CP	A,24+1		; Second number insignificant?
 	RET	NC		; Yes - First number is result
-	PUSH	AF		; Save number of bits to scale
+	PUSH	F
+	PUSH	A		; Save number of bits to scale
 	CALL	SIGNS		; Set MSBs & sign of result
 	LD	H,A		; Save sign of result
-	POP	AF		; Restore scaling factor
+	POP	A
+	POP	F		; Restore scaling factor
 	CALL	SCALE		; Scale BCDE to same exponent
 	OR	A,H		; Result to be positive?
 	LD	HL,FPREG	; Point to FPREG
@@ -3131,7 +3187,7 @@ CONPOS:	CALL	C,COMPL		; Overflow - Make it positive
 ;
 BNORM:	LD	L,B		; L = Exponent
 	LD	H,E		; H = LSB
-	XOR	A
+	XOR	A,A	
 BNRMLP:	LD	B,A		; Save bit count
 	LD	A,C		; Get MSB
 	OR	A,A		; Is it zero?
@@ -3207,7 +3263,7 @@ COMPL:	LD	HL,SGNRES	; Sign of result
 	LD	A,(HL)		; Get sign of result
 	CPL	A			; Negate it
 	LD	(HL),A		; Put it back
-	XOR	A
+	XOR	A,A	
 	LD	L,A		; Set L to zero
 	SUB	A,B		; Negate exponent,set carry
 	LD	B,A		; Re-save exponent
@@ -3258,14 +3314,15 @@ LOGTAB:	DB	3			; Table used by LOG
 	DB	045H,0AAH,038H,082H	; 2.88539
 ;
 LOG:	CALL	TSTSGN		; Test sign of value
-	OR	A
+	OR	A,A	
 	JP	PE,FCERR	; ?FC Error if <= zero
 	LD	HL,FPEXP	; Point to exponent
 	LD	A,(HL)		; Get exponent
 	LD	BC,8035H	; BCDE = SQR(1/2)
 	LD	DE,04F3H
 	SUB	A,B		; Scale value to be < 1
-	PUSH	AF		; Save scale factor
+	PUSH	F
+	PUSH	A		; Save scale factor
 	LD	(HL),B		; Save new exponent
 	PUSH	DE		; Save SQR(1/2)
 	PUSH	BC
@@ -3281,7 +3338,8 @@ LOG:	CALL	TSTSGN		; Test sign of value
 	LD	BC,8080H	; BCDE = -0.5
 	LD	DE,0000H
 	CALL	FPADD		; Subtract 0.5 from FPREG
-	POP	AF		; Restore scale factor
+	POP	A
+	POP	F		; Restore scale factor
 	CALL	RSCALE		; Re-scale number
 MULLN2:	LD	BC,8031H	; BCDE = Ln(2)
 	LD	DE,7218H
@@ -3370,7 +3428,7 @@ DVBCDE:	CALL	TSTSGN		; Test sign of FPREG
 	LD	(DIV1),A	; Save for subtraction
 	LD	B,C		; Get MSB
 	EX	DE,HL		; NMSB,LSB to HL
-	XOR	A
+	XOR	A,A	
 	LD	C,A		; Clear MSB of quotient
 	LD	D,A		; Clear NMSB of quotient
 	LD	E,A		; Clear LSB of quotient
@@ -3383,8 +3441,10 @@ DIVLP:	PUSH	HL		; Save divisor
 	CCF
 	JP	NC,RESDIV	; Restore divisor if borrow
 	LD	(DIV4),A	; Re-save overflow count
-	POP	AF		; Scrap divisor
-	POP	AF
+	POP	A
+	POP	F		; Scrap divisor
+	POP	A
+	POP	F	
 	SCF			; Set carry to
 	DB	0D2H		; Skip "POP BC" and "POP HL"
 ;
@@ -3465,7 +3525,7 @@ MLSP10:	CALL	BCDEFP		; Move FPREG to BCDE
 	JP	OVERR		; Overflow error
 ;
 TSTSGN:	LD	A,(FPEXP)	; Get sign of FPREG
-	OR	A
+	OR	A,A	
 	RET	Z		; RETurn if number is zero
 	LD	A,(FPREG+2)	; Get MSB of FPREG
 	DB	0FEH		; Test sign
@@ -3557,7 +3617,7 @@ SIGNS:	LD	HL,FPREG+2	; Point to MSB of FPREG
 	RET
 ;
 CMPNUM:	LD	A,B		; Get exponent of number
-	OR	A
+	OR	A,A	
 	JP	Z,TSTSGN	; Zero - Test sign of FPREG
 	LD	HL,RETREL	; Return relation routine
 	PUSH	HL		; Save for return
@@ -3633,11 +3693,13 @@ INT:	LD	HL,FPEXP	; Point to exponent
 	CALL	FPINT		; F.P to integer
 	LD	(HL),80H+24	; Save 24 bit integer
 	LD	A,E		; Get LSB of number
-	PUSH	AF		; Save LSB
+	PUSH	F
+	PUSH	A		; Save LSB
 	LD	A,C		; Get MSB of number
 	RL	1,A			; Sign to carry
 	CALL	CONPOS		; Set sign of result
-	POP	AF		; Restore LSB of number
+	POP	A
+	POP	F		; Restore LSB of number
 	RET
 ;
 MLDEBC:	LD	HL,0		; Clear partial product
@@ -3658,7 +3720,8 @@ NOMLAD:	DEC	A		; Count bits
 	RET
 ;
 ASCTFP:	CP	A,'-'		; Negative?
-	PUSH	AF		; Save it and flags
+	PUSH	F
+	PUSH	A		; Save it and flags
 	JP	Z,CNVNUM	; Yes - Convert number
 	CP	A,'+'		; Positive?
 	JP	Z,CNVNUM	; Yes - Convert number
@@ -3681,7 +3744,7 @@ EXPLP:	CALL	GETCHR		; Get next character
 	JP	C,EDIGIT	; Digit - Add to exponent
 	INC	D		; Is sign negative?
 	JP	NZ,CONEXP	; No - Scale number
-	XOR	A
+	XOR	A,A	
 	SUB	A,E		; Negate exponent
 	LD	E,A		; And re-save it
 	INC	C		; Flag end of number
@@ -3692,22 +3755,27 @@ CONEXP:	PUSH	HL		; Save code string address
 	SUB	A,B		; Subtract digits after point
 SCALMI:	CALL	P,SCALPL	; Positive - Multiply number
 	JP	P,ENDCON	; Positive - All done
-	PUSH	AF		; Save number of times to /10
+	PUSH	F
+	PUSH	A		; Save number of times to /10
 	CALL	DIV10		; Divide by 10
-	POP	AF		; Restore count
+	POP	A
+	POP	F		; Restore count
 	INC	A		; Count divides
 ;
 ENDCON:	JP	NZ,SCALMI	; More to do
 	POP	DE		; Restore code string address
-	POP	AF		; Restore sign of number
+	POP	A
+	POP	F		; Restore sign of number
 	CALL	Z,INVSGN	; Negative - Negate number
 	EX	DE,HL		; Code string address to HL
 	RET
 ;
 SCALPL:	RET	Z		; Exit if no scaling needed
-MULTEN:	PUSH	AF		; Save count
+MULTEN:	PUSH	F
+	PUSH	A		; Save count
 	CALL	MLSP10		; Multiply number by 10
-	POP	AF		; Restore count
+	POP	A
+	POP	F		; Restore count
 	DEC	A		; Count multiplies
 	RET
 ;
@@ -3720,7 +3788,8 @@ ADDIG:	PUSH	DE		; Save sign of exponent
 	PUSH	HL		; Save code string address
 	PUSH	DE		; Save digit
 	CALL	MLSP10		; Multiply number by 10
-	POP	AF		; Restore digit
+	POP	A
+	POP	F		; Restore digit
 	SUB	A,'0'		; Make it absolute
 	CALL	RSCALE		; Re-scale number
 	POP	HL		; Restore code string address
@@ -3749,7 +3818,7 @@ LINEIN:	PUSH	HL		; Save code string address
 	CALL	PRS		; Output string at HL
 	POP	HL		; Restore code string address
 PRNTHL:	EX	DE,HL		; Code string address to DE
-	XOR	A
+	XOR	A,A	
 	LD	B,80H+24	; 24 bits
 	CALL	RETINT		; Return the integer
 	LD	HL,PRNUMS	; Print number string
@@ -3766,29 +3835,35 @@ SPCFST:	INC	HL		; First byte of number
 	PUSH	HL		; Save buffer address
 	CALL	M,INVSGN	; Negate FPREG if negative
 	XOR	A,A		; Zero A
-	PUSH	AF		; Save it
+	PUSH	F
+	PUSH	A		; Save it
 	CALL	RNGTST		; Test number is in range
 SIXDIG:	LD	BC,9143H	; BCDE - 99999.9
 	LD	DE,4FF8H
 	CALL	CMPNUM		; Compare numbers
-	OR	A
+	OR	A,A	
 	JP	PO,INRNG	; > 99999.9 - Sort it out
-	POP	AF		; Restore count
+	POP	A
+	POP	F		; Restore count
 	CALL	MULTEN		; Multiply by ten
-	PUSH	AF		; Re-save count
+	PUSH	F
+	PUSH	A		; Re-save count
 	JP	SIXDIG		; Test it again
 ;
 GTSIXD:	CALL	DIV10		; Divide by 10
-	POP	AF		; Get count
+	POP	A
+	POP	F		; Get count
 	INC	A		; Count divides
-	PUSH	AF		; Re-save count
+	PUSH	F
+	PUSH	A		; Re-save count
 	CALL	RNGTST		; Test number is in range
 INRNG:	CALL	ROUND		; Add 0.5 to FPREG
 	INC	A
 	CALL	FPINT		; F.P to integer
 	CALL	FPBCDE		; Move BCDE to FPREG
 	LD	BC,0306H	; 1E+06 to 1E-03 range
-	POP	AF		; Restore count
+	POP	A
+	POP	F		; Restore count
 	ADD	A,C		; 6 digits before point
 	INC	A		; Add one
 	JP	M,MAKNUM	; Do it in 'E' form if < 1E-02
@@ -3801,7 +3876,8 @@ INRNG:	CALL	ROUND		; Add 0.5 to FPREG
 MAKNUM:	DEC	A		; Adjust for digits to do
 	DEC	A
 	POP	HL		; Restore buffer address
-	PUSH	AF		; Save count
+	PUSH	F
+	PUSH	A		; Save count
 	LD	DE,POWERS	; Powers of ten
 	DEC	B		; Count digits before point
 	JP	NZ,DIGTXT	; Not zero - Do number
@@ -3852,7 +3928,8 @@ SUPTLZ:	DEC	HL		; Move back through buffer
 	CP	A,'.'		; A decimal point?
 	CALL	NZ,INCHL	; Move back over digit
 ;
-DOEBIT:	POP	AF		; Get 'E' flag
+DOEBIT:	POP	A
+	POP	F		; Get 'E' flag
 	JP	Z,NOENED	; No 'E' needed - End buffer
 	LD	(HL),'E'	; Put 'E' in buffer
 	INC	HL		; And move on
@@ -3878,7 +3955,7 @@ NOENED:	LD	(HL),C		; Mark end of buffer
 RNGTST:	LD	BC,9474H	; BCDE = 999999.
 	LD	DE,23F7H
 	CALL	CMPNUM		; Compare numbers
-	OR	A
+	OR	A,A	
 	POP	HL		; Return address to HL
 	JP	PO,GTSIXD	; Too big - Divide by ten
 	JP	(HL)		; Otherwise return to caller
@@ -3921,7 +3998,8 @@ POWER1:	OR	A,A		; Base zero?
 	CALL	INT		; Get integer of power
 	POP	BC		; Restore power
 	POP	DE
-	PUSH	AF		; MSB of base
+	PUSH	F
+	PUSH	A		; MSB of base
 	CALL	CMPNUM		; Power an integer?
 	POP	HL		; Restore MSB of base
 	LD	A,H		; but don't affect flags
@@ -3950,14 +4028,17 @@ EXP:	CALL	STAKFP		; Put value on stack
 	ADD	A,80H		; For excess 128
 	ADD	A,2		; Exponent > 126?
 	JP	C,OVTST1	; Yes - Test for overflow
-	PUSH	AF		; Save scaling factor
+	PUSH	F
+	PUSH	A		; Save scaling factor
 	LD	HL,UNITY	; Point to 1.
 	CALL	ADDPHL		; Add 1 to FPREG
 	CALL	MULLN2		; Multiply by LN(2)
-	POP	AF		; Restore scaling factor
+	POP	A
+	POP	F		; Restore scaling factor
 	POP	BC		; Restore exponent
 	POP	DE
-	PUSH	AF		; Save scaling factor
+	PUSH	F
+	PUSH	A		; Save scaling factor
 	CALL	SUBCDE		; Subtract exponent from FPREG
 	CALL	INVSGN		; Negate result
 	LD	HL,EXPTAB	; Coefficient table
@@ -3989,14 +4070,16 @@ SMSER1:	CALL	STAKFP		; Put value on stack
 	INC	HL		; Point to start of table
 	CALL	PHLTFP		; Move coefficient to FPREG
 	DB	06H		; Skip "POP AF"
-SUMLP:	POP	AF		; Restore count
+SUMLP:	POP	A
+	POP	F		; Restore count
 	POP	BC		; Restore number
 	POP	DE
 	DEC	A		; Cont coefficients
 	RET	Z		; All done
 	PUSH	DE		; Save number
 	PUSH	BC
-	PUSH	AF		; Save count
+	PUSH	F
+	PUSH	A		; Save count
 	PUSH	HL		; Save address in table
 	CALL	FPMULT		; Multiply FPREG by BCDE
 	POP	HL		; Restore address in table
@@ -4092,11 +4175,13 @@ SIN:	CALL	STAKFP		; Put angle on stack
 	CALL	ROUND		; Add 0.5 to value
 	CALL	TSTSGN		; Test sign of value
 	OR	A,A		; Flag negative
-SIN1:	PUSH	AF		; Save sign
+SIN1:	PUSH	F
+	PUSH	A		; Save sign
 	CALL	P,INVSGN	; Negate value if positive
 	LD	HL,QUARTR	; Point to 0.25
 	CALL	ADDPHL		; Add 0.25 to value
-	POP	AF		; Restore sign
+	POP	A
+	POP	F		; Restore sign
 	CALL	NC,INVSGN	; Negative - Make positive
 	LD	HL,SINTAB	; Coefficient table
 	JP	SUMSER		; Evaluate sum of series
@@ -4372,7 +4457,8 @@ INITST:	LD	A,0		; Clear break flag
 	LD	(BRKFLG),A
 	JP	INIT
 ;
-TSTBIT:	PUSH	AF		; Save bit mask
+TSTBIT:	PUSH	F
+	PUSH	A		; Save bit mask
 	AND	A,B		; Get common bits
 	POP	BC		; Restore bit mask
 	CP	A,B		; Same bit set?

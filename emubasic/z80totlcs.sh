@@ -17,4 +17,8 @@ sed '#
 	s/	R\([RL]\)A/	R\1	1,A/
 	/	CPL	A/b
 	s/	CPL/	CPL	A/
+	s/	PUSH	AF	/	PUSH	F\
+	PUSH	A	/
+	s/	POP	AF	/	POP	A\
+	POP	F	/
 '

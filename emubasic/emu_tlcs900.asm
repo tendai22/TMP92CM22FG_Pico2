@@ -52,11 +52,13 @@ KBHIT:	LD	A,(UARTCR)
 	RET
 ;
 ;	A -> UART
-TXA:	PUSH	AF
-TXAST1:	LD	A,(UARTCR)
+TXA:
+	PUSH	AF	
+TXAST1:
+	LD	A,(UARTCR)
 	BIT	1,A
 	JR	Z,TXAST1
-	POP	AF
+	POP	AF	
 	LD	(UARTDR),A
 	RET
 ;
@@ -3131,7 +3133,7 @@ CONPOS: CALL	C,COMPL		; Overflow - Make it positive
 ;
 BNORM:	LD	L,B		; L = Exponent
 	LD	H,E		; H = LSB
-	XOR	A
+	XOR	A	
 BNRMLP: LD	B,A		; Save bit count
 	LD	A,C		; Get MSB
 	OR	A		; Is it zero?
@@ -3207,7 +3209,7 @@ COMPL:	LD	HL,SGNRES	; Sign of result
 	LD	A,(HL)		; Get sign of result
 	CPL			; Negate it
 	LD	(HL),A		; Put it back
-	XOR	A
+	XOR	A	
 	LD	L,A		; Set L to zero
 	SUB	B		; Negate exponent,set carry
 	LD	B,A		; Re-save exponent
@@ -3258,7 +3260,7 @@ LOGTAB: DB	3			; Table used by LOG
 	DB	045H,0AAH,038H,082H	; 2.88539
 ;
 LOG:	CALL	TSTSGN		; Test sign of value
-	OR	A
+	OR	A	
 	JP	PE,FCERR	; ?FC Error if <= zero
 	LD	HL,FPEXP	; Point to exponent
 	LD	A,(HL)		; Get exponent
@@ -3370,7 +3372,7 @@ DVBCDE: CALL	TSTSGN		; Test sign of FPREG
 	LD	(DIV1),A	; Save for subtraction
 	LD	B,C		; Get MSB
 	EX	DE,HL		; NMSB,LSB to HL
-	XOR	A
+	XOR	A	
 	LD	C,A		; Clear MSB of quotient
 	LD	D,A		; Clear NMSB of quotient
 	LD	E,A		; Clear LSB of quotient
@@ -3384,7 +3386,7 @@ DIVLP:	PUSH	HL		; Save divisor
 	JP	NC,RESDIV	; Restore divisor if borrow
 	LD	(DIV4),A	; Re-save overflow count
 	POP	AF		; Scrap divisor
-	POP	AF
+	POP	AF	
 	SCF			; Set carry to
 	DB	0D2H		; Skip "POP BC" and "POP HL"
 ;
@@ -3465,7 +3467,7 @@ MLSP10: CALL	BCDEFP		; Move FPREG to BCDE
 	JP	OVERR		; Overflow error
 ;
 TSTSGN: LD	A,(FPEXP)	; Get sign of FPREG
-	OR	A
+	OR	A	
 	RET	Z		; RETurn if number is zero
 	LD	A,(FPREG+2)	; Get MSB of FPREG
 	DB	0FEH		; Test sign
@@ -3557,7 +3559,7 @@ SIGNS:	LD	HL,FPREG+2	; Point to MSB of FPREG
 	RET
 ;
 CMPNUM: LD	A,B		; Get exponent of number
-	OR	A
+	OR	A	
 	JP	Z,TSTSGN	; Zero - Test sign of FPREG
 	LD	HL,RETREL	; Return relation routine
 	PUSH	HL		; Save for return
@@ -3681,7 +3683,7 @@ EXPLP:	CALL	GETCHR		; Get next character
 	JP	C,EDIGIT	; Digit - Add to exponent
 	INC	D		; Is sign negative?
 	JP	NZ,CONEXP	; No - Scale number
-	XOR	A
+	XOR	A	
 	SUB	E		; Negate exponent
 	LD	E,A		; And re-save it
 	INC	C		; Flag end of number
@@ -3749,7 +3751,7 @@ LINEIN: PUSH	HL		; Save code string address
 	CALL	PRS		; Output string at HL
 	POP	HL		; Restore code string address
 PRNTHL: EX	DE,HL		; Code string address to DE
-	XOR	A
+	XOR	A	
 	LD	B,80H+24	; 24 bits
 	CALL	RETINT		; Return the integer
 	LD	HL,PRNUMS	; Print number string
@@ -3771,7 +3773,7 @@ SPCFST: INC	HL		; First byte of number
 SIXDIG: LD	BC,9143H	; BCDE - 99999.9
 	LD	DE,4FF8H
 	CALL	CMPNUM		; Compare numbers
-	OR	A
+	OR	A	
 	JP	PO,INRNG	; > 99999.9 - Sort it out
 	POP	AF		; Restore count
 	CALL	MULTEN		; Multiply by ten
@@ -3878,7 +3880,7 @@ NOENED: LD	(HL),C		; Mark end of buffer
 RNGTST: LD	BC,9474H	; BCDE = 999999.
 	LD	DE,23F7H
 	CALL	CMPNUM		; Compare numbers
-	OR	A
+	OR	A	
 	POP	HL		; Return address to HL
 	JP	PO,GTSIXD	; Too big - Divide by ten
 	JP	(HL)		; Otherwise return to caller
