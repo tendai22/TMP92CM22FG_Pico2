@@ -1045,10 +1045,10 @@ CPDEHL: LD	A,H		; Get H
 ;
 CHKSYN: LD	A,(HL)		; Check syntax of character
 	; TLCS-9000 need to cosider
-	EX	(SP),HL		; Address of test byte
+	;XXX EX	(SP),HL		; Address of test byte
 	CP	(HL)		; Same as in code string?
 	INC	HL		; Return address
-	EX	(SP),HL		; Put it back
+	;XXX EX	(SP),HL		; Put it back
 	JP	Z,GETCHR	; Yes - Get next character
 	JP	SNERR		; Different - ?SN Error
 ;
@@ -1198,10 +1198,10 @@ FORFND: EX	DE,HL		; Code string address to HL
 	PUSH	HL		; Save code string address
 	LD	HL,(LOOPST)	; Get first statement of loop
 	; TLCS-900 need to consider
-	EX	(SP),HL		; Save and restore code string
+	;XXX EX	(SP),HL		; Save and restore code string
 	PUSH	HL		; Re-save code string address
 	LD	HL,(LINEAT)	; Get current line number
-	EX	(SP),HL		; Save and restore code string
+	;XXX EX	(SP),HL		; Save and restore code string
 	CALL	TSTNUM		; Make sure it's a number
 	CALL	CHKSYN		; Make sure "TO" is next
 	DB	ZTO		; "TO" token
@@ -1304,7 +1304,7 @@ UPDATA: LD	(NXTDAT),HL	; Update DATA pointer
 	RET
 ;
 
-TSTBRK: RST	18H		; Check input status
+TSTBRK:	RST	18H		; Check input status
 	RET	Z		; No key, go back
 	RST	10H		; Get the key into A
 	CP	ESC		; Escape key?
@@ -1331,7 +1331,7 @@ STOP:	RET	NZ		; Exit if anything else
 PEND:	RET	NZ		; Exit if anything else
 	LD	(BRKLIN),HL	; Save point of break
 	DB	21H		; Skip "OR 11111111B"
-INPBRK: OR	11111111B	; Flag "Break" wanted
+INPBRK: OR	A,11111111B	; Flag "Break" wanted
 	POP	BC		; Return not needed and more
 ENDPRG: LD	HL,(LINEAT)	; Get current line number
 	PUSH	AF		; Save STOP / END status
@@ -1342,7 +1342,7 @@ ENDPRG: LD	HL,(LINEAT)	; Get current line number
 	LD	(ERRLIN),HL	; Save line of break
 	LD	HL,(BRKLIN)	; Get point of break
 	LD	(CONTAD),HL	; Save point to CONTinue
-NOLIN:	XOR	A
+NOLIN:	XOR	A,A
 	LD	(CTLOFG),A	; Enable output
 	CALL	STTLIN		; Start a new line
 	POP	AF		; Restore STOP / END status
@@ -1541,7 +1541,7 @@ LET:	CALL	GETVAR		; Get variable name
 	POP	AF		; Restore type
 	EX	(SP),HL		; Save code - Get var addr
 	LD	(BRKLIN),HL	; Save address of variable
-	RRA			; Adjust type
+	RRA				; Adjust type
 	CALL	CHKTYP		; Check types are the same
 	JP	Z,LETNUM	; Numeric - Move value
 LETSTR: PUSH	HL		; Save address of string var
@@ -1662,7 +1662,7 @@ PRCRLF: LD	A,CR		; Load a CR
 	CALL	OUTC		; Output character
 	LD	A,LF		; Load a LF
 	CALL	OUTC		; Output character
-DONULL: XOR	A		; Set to position 0
+DONULL:	XOR	A		; Set to position 0
 	LD	(CURPOS),A	; Store it
 	LD	A,(NULLS)	; Get number of nulls
 NULLP:	DEC	A		; Count them
@@ -1679,7 +1679,7 @@ DOCOM:	LD	A,(COMMAN)	; Get comma width
 	CP	B		; Within the limit?
 	CALL	NC,PRCRLF	; No - output CRLF
 	JP	NC,NEXITM	; Get next item
-ZONELP: SUB	14		; Next zone of 14 characters
+ZONELP:	SUB	A,14		; Next zone of 14 characters
 	JP	NC,ZONELP	; Repeat if more zones
 	CPL			; Number of spaces to output
 	JP	ASPCS		; Output them
@@ -1710,7 +1710,7 @@ NEXITM: POP	HL		; Restore code string address
 REDO:	DB	"?Redo from start",CR,LF,0
 ;
 BADINP: LD	A,(READFG)	; READ or INPUT?
-	OR	A
+	OR	A	
 	JP	NZ,DATSNR	; READ - ?SN Error
 	POP	BC		; Throw away code string addr
 	LD	HL,REDO		; "Redo from start" message
@@ -1745,7 +1745,7 @@ NOPMPT: PUSH	HL		; Save code string address
 READ:	PUSH	HL		; Save code string address
 	LD	HL,(NXTDAT)	; Next DATA statement
 	DB	0F6H		; Flag "READ"
-NXTITM: XOR	A		; Flag "INPUT"
+NXTITM:	XOR	A		; Flag "INPUT"
 	LD	(READFG),A	; Save "READ"/"INPUT" flag
 	EX	(SP),HL		; Get code str' , Save pointer
 	JP	GTVLUS		; Get values
@@ -1759,7 +1759,7 @@ GTVLUS: CALL	GETVAR		; Get variable name
 	CP	','		; Comma?
 	JP	Z,ANTVLU	; Yes - Get another value
 	LD	A,(READFG)	; Is it READ?
-	OR	A
+	OR	A	
 	JP	NZ,FDTLP	; Yes - Find next DATA stmt
 	LD	A,'?'		; More INPUT needed
 	CALL	OUTC		; Output character
@@ -1783,7 +1783,7 @@ ANTVLU: LD	A,(TYPE)	; Check data type
 	CP	'"'		; Start of literal sting?
 	JP	Z,STRENT	; Yes - Create string entry
 	LD	A,(READFG)	; "READ" or "INPUT" ?
-	OR	A
+	OR	A	
 	LD	D,A		; Save 00 if "INPUT"
 	JP	Z,ITMSEP	; "INPUT" - End with 00
 	LD	D,':'		; "DATA" - End with 00 or ':'
@@ -1812,7 +1812,7 @@ MORDT:	EX	(SP),HL		; Get code string address
 	JP	NZ,NEDMOR	; More needed - Get it
 	POP	DE		; Restore DATA pointer
 	LD	A,(READFG)	; "READ" or "INPUT" ?
-	OR	A
+	OR	A	
 	EX	DE,HL		; DATA pointer to HL
 	JP	NZ,UPDATA	; Update DATA pointer if "READ"
 	PUSH	DE		; Save code string address
@@ -1926,7 +1926,7 @@ RLTLP:	SUB	ZGTR		; ">" Token
 	JP	RLTLP		; Treat the two as one
 ;
 FOPRND: LD	A,D		; < = > found ?
-	OR	A
+	OR	A	
 	JP	NZ,TSTRED	; Yes - Test for reduction
 	LD	A,(HL)		; Get operator token
 	LD	(CUROPR),HL	; Save operator address
@@ -1985,7 +1985,7 @@ OPRND:	XOR	A		; Get operand routine
 	JP	Z,BINTFP	; Convert Bin to FPREG
 	LD	E,SN		; If neither then a ?SN Error
 	JP	Z,ERROR
-NOTAMP: CP	ZPLUS		; '+' Token ?
+NOTAMP:	CP	ZPLUS		; '+' Token ?
 	JP	Z,OPRND		; Yes - Look for operand
 	CP	'.'		; '.' ?
 	JP	Z,ASCTFP	; Yes - Create FP number
@@ -2114,7 +2114,7 @@ TSTRED: LD	HL,CMPLOG	; Logical compare routine
 ;
 CMPLOG: DW	CMPLG1		; Compare two values / strings
 CMPLG1: LD	A,C		; Get data type
-	OR	A
+	OR	A	
 	RRA
 	POP	BC		; Get last expression to BCDE
 	POP	DE
@@ -2147,7 +2147,7 @@ CMPSTR: LD	A,E		; Bytes of string 2 to do
 	LD	A,D		; Get bytes of string 1 to do
 	SUB	1
 	RET	C		; Exit if end of string 1
-	XOR	A
+	XOR	A	
 	CP	E		; Bytes of string 2 to do
 	INC	A
 	RET	NC		; Exit if end of string 2
@@ -2190,12 +2190,12 @@ DIMRET: DEC	HL		; DEC 'cos GETCHR INCs
 DIM:	LD	BC,DIMRET	; Return to "DIMRET"
 	PUSH	BC		; Save on stack
 	DB	0F6H		; Flag "Create" variable
-GETVAR: XOR	A		; Find variable address,to DE
+GETVAR:	XOR	A		; Find variable address,to DE
 	LD	(LCRFLG),A	; Set locate / create flag
 	LD	B,(HL)		; Get First byte of name
 GTFNAM: CALL	CHKLTR		; See if a letter
 	JP	C,SNERR		; ?SN Error if not a letter
-	XOR	A
+	XOR	A	
 	LD	C,A		; Clear second byte of name
 	LD	(TYPE),A	; Set type to numeric
 	CALL	GETCHR		; Get next character
@@ -2207,7 +2207,7 @@ ENDNAM: CALL	GETCHR		; Get next character
 	JP	C,ENDNAM	; Numeric - Get another
 	CALL	CHKLTR		; See if a letter
 	JP	NC,ENDNAM	; Letter - Get another
-CHARTY: SUB	'$'		; String variable?
+CHARTY:	SUB	'$'		; String variable?
 	JP	NZ,NOTSTR	; No - Numeric variable
 	INC	A		; A = 1 (string type)
 	LD	(TYPE),A	; Set type to string
@@ -2223,7 +2223,7 @@ NOTSTR: LD	A,(FORFLG)	; Array name needed ?
 	SUB	'('		; Subscripted variable?
 	JP	Z,SBSCPT	; Yes - Sort out subscript
 ;
-NSCFOR: XOR	A		; Simple variable
+NSCFOR:	XOR	A		; Simple variable
 	LD	(FORFLG),A	; Clear "FOR" flag
 	PUSH	HL		; Save code string address
 	LD	D,B		; DE = Variable name to find
@@ -2343,7 +2343,7 @@ NXTARY: INC	HL		; Move on
 	INC	HL
 	JP	NZ,FNDARY	; Not found - Keep looking
 	LD	A,(LCRFLG)	; Found Locate or Create it?
-	OR	A
+	OR	A	
 	JP	NZ,DDERR	; Create - ?DD Error
 	POP	AF		; Locate - Get number of dim'ns
 	LD	B,H		; BC Points to array dim'ns
@@ -2452,7 +2452,7 @@ FRE:	LD	HL,(ARREND)	; Start of free memory
 	LD	HL,0		; End of free memory
 	ADD	HL,SP		; Current stack value
 	LD	A,(TYPE)	; Dummy argument type
-	OR	A
+	OR	A	
 	JP	Z,FRENUM	; Numeric - Free variable space
 	CALL	GSTRCU		; Current string to pool
 	CALL	GARBGE		; Garbage collection
@@ -2672,7 +2672,7 @@ POPAF:	POP	AF		; Throw away status push
 TESTOS: POP	AF		; Garbage collect been done?
 	LD	E,OS		; ?OS Error
 	JP	Z,ERROR		; Yes - Not enough string apace
-	CP	A		; Flag garbage collect done
+	CP	A,A			; Flag garbage collect done
 	PUSH	AF		; Save status
 	LD	BC,GRBDON	; Garbage collection done
 	PUSH	BC		; Save for RETurn
@@ -2875,7 +2875,7 @@ BAKTMP: LD	HL,(TMSTPT)	; Get temporary string pool top
 LEN:	LD	BC,PASSA	; To return integer A
 	PUSH	BC		; Save address
 GETLEN: CALL	GETSTR		; Get string and its length
-	XOR	A
+	XOR	A	
 	LD	D,A		; Clear D
 	LD	(TYPE),A	; Set type to numeric
 	LD	A,(HL)		; Get length of string
